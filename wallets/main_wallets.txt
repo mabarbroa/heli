@@ -1,0 +1,5 @@
+# Main wallet private keys - one per line
+# Lines starting with # are ignored
+0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+0x2234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+0x3234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
