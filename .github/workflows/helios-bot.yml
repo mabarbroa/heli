@@ -1,0 +1,72 @@
+name: Helios Multi-Wallet Bot
+
+on:
+  schedule:
+    # Runs every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run all operations'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  helios-multi-wallet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        batch: [1, 2, 3]  # Process wallets in batches
+      max-parallel: 3
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        
+    - name: Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Verify Wallet Files
+      run: |
+        echo "Checking wallet files..."
+        ls -la wallets/
+        wc -l wallets/*.txt
+        
+    - name: Run Helios Bot Batch ${{ matrix.batch }}
+      env:
+        BATCH_NUMBER: ${{ matrix.batch }}
+        HELIOS_RPC_URL: ${{ secrets.HELIOS_RPC_URL }}
+        FORCE_RUN: ${{ github.event.inputs.force_run }}
+      run: |
+        python src/helios_multi_bot.py --batch ${{ matrix.batch }}
+        
+    - name: Upload Logs
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: helios-logs-batch-${{ matrix.batch }}
+        path: |
+          logs/
+          reports/
+        retention-days: 7
+        
+    - name: Display Results Summary
+      if: always()
+      run: |
+        echo "=== Batch ${{ matrix.batch }} Results ==="
+        if [ -f "reports/batch_${{ matrix.batch }}_latest.json" ]; then
+          cat reports/batch_${{ matrix.batch }}_latest.json | python -m json.tool
+        fi
+        echo "=== Recent Logs ==="
+        tail -20 logs/helios_bot_$(date +%Y%m%d).log || echo "No logs found"
